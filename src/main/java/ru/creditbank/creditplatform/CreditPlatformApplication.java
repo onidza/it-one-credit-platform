@@ -6,8 +6,8 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class CreditPlatformApplication {
 
-	public static void main(String[] args) {
-		SpringApplication.run(CreditPlatformApplication.class, args);
-	}
+  public static void main(String[] args) {
+    SpringApplication.run(CreditPlatformApplication.class, args);
+  }
 
 }

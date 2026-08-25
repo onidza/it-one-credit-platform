@@ -1,1 +1,157 @@
-services: {}
+services:
+  api-gateway:
+    build:
+      context: ../apigateway
+      dockerfile: Dockerfile
+    container_name: credit-platform-gateway
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://api-gateway-db:5432/${API_GATEWAY_DB_NAME:-postgres}
+      SPRING_DATASOURCE_USERNAME: ${API_GATEWAY_DB_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${API_GATEWAY_DB_PASSWORD:-postgres}
+
+      REST_CREDIT_SERVICE_URL: ${CREDIT_SERVICE_URL:-http://credit-service:8081}
+      REST_LOAN_SERVICE_URL: ${LOAN_MANAGEMENT_SERVICE_URL:-http://loan-management-service:8082}
+    depends_on:
+      api-gateway-db:
+        condition: service_healthy
+      credit-service:
+        condition: service_healthy
+      loan-management-service:
+        condition: service_healthy
+    ports:
+      - "8080:8080"
+    networks:
+      - services-net
+      - api-gateway-db-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  credit-service:
+    build:
+      context: ../credit-service
+      dockerfile: Dockerfile
+    container_name: credit-platform-credit-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://credit-service-db:5432/${CREDIT_SERVICE_DB_NAME:-postgres}
+      SPRING_DATASOURCE_USERNAME: ${CREDIT_SERVICE_DB_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${CREDIT_SERVICE_DB_PASSWORD:-postgres}
+
+      REST_LOAN_SERVICE_URL: ${LOAN_MANAGEMENT_SERVICE_URL:-http://loan-management-service:8082}
+    depends_on:
+      credit-service-db:
+        condition: service_healthy
+      loan-management-service:
+        condition: service_healthy
+    networks:
+      - services-net
+      - credit-service-db-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8081/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  loan-management-service:
+    build:
+      context: ../loan-management-service
+      dockerfile: Dockerfile
+    container_name: credit-platform-loan-service
+    restart: unless-stopped
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://loan-management-service-db:5432/${LOAN_MANAGEMENT_SERVICE_DB_NAME:-postgres}
+      SPRING_DATASOURCE_USERNAME: ${LOAN_MANAGEMENT_SERVICE_DB_USER:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${LOAN_MANAGEMENT_SERVICE_DB_PASSWORD:-postgres}
+    depends_on:
+      loan-management-service-db:
+        condition: service_healthy
+    networks:
+      - services-net
+      - loan-management-service-db-net
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8082/actuator/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  api-gateway-db:
+    image: postgres:18
+    container_name: api-gateway-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${API_GATEWAY_DB_NAME:-postgres}
+      POSTGRES_USER: ${API_GATEWAY_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${API_GATEWAY_DB_PASSWORD:-postgres}
+    volumes:
+      - api-gateway-db:/var/lib/postgresql
+    networks:
+      - api-gateway-db-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  credit-service-db:
+    image: postgres:18
+    container_name: credit-service-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${CREDIT_SERVICE_DB_NAME:-postgres}
+      POSTGRES_USER: ${CREDIT_SERVICE_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${CREDIT_SERVICE_DB_PASSWORD:-postgres}
+    volumes:
+      - credit-service-db:/var/lib/postgresql
+    networks:
+      - credit-service-db-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  loan-management-service-db:
+    image: postgres:18
+    container_name: loan-management-service-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${LOAN_MANAGEMENT_SERVICE_DB_NAME:-postgres}
+      POSTGRES_USER: ${LOAN_MANAGEMENT_SERVICE_DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${LOAN_MANAGEMENT_SERVICE_DB_PASSWORD:-postgres}
+    volumes:
+      - loan-management-service-db:/var/lib/postgresql
+    networks:
+      - loan-management-service-db-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d postgres" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  api-gateway-db:
+  credit-service-db:
+  loan-management-service-db:
+
+networks:
+  services-net:
+    driver: bridge
+
+  api-gateway-db-net:
+    driver: bridge
+
+  credit-service-db-net:
+    driver: bridge
+
+  loan-management-service-db-net:
+    driver: bridge
