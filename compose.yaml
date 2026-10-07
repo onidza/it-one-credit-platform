@@ -12,6 +12,8 @@ services:
 
       REST_CREDIT_SERVICE_URL: ${CREDIT_SERVICE_URL:-http://credit-service:8081}
       REST_LOAN_SERVICE_URL: ${LOAN_MANAGEMENT_SERVICE_URL:-http://loan-management-service:8082}
+
+      GRPC_CREDIT_SERVICE_ADDRESS: "credit-service:9091"
     depends_on:
       api-gateway-db:
         condition: service_healthy
@@ -43,6 +45,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${CREDIT_SERVICE_DB_PASSWORD:-postgres}
 
       REST_LOAN_SERVICE_URL: ${LOAN_MANAGEMENT_SERVICE_URL:-http://loan-management-service:8082}
+
+      S3_ENDPOINT: http://rustfs:9000
     depends_on:
       credit-service-db:
         condition: service_healthy
@@ -170,8 +174,6 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
     volumes:
       - kafka_data:/var/lib/kafka/data
-    expose:
-      - "9092"
     networks:
       - services-net
 
@@ -204,11 +206,28 @@ services:
       - services-net
       - credit-service-db-net
 
+  rustfs:
+    image: rustfs/rustfs:1.0.0
+    container_name: rustfs
+    ports:
+      - "9001:9001"
+    environment:
+      RUSTFS_ACCESS_KEY: admin
+      RUSTFS_SECRET_KEY: password123
+      RUSTFS_ADDRESS: "0.0.0.0:9000"
+      RUSTFS_CONSOLE_ADDRESS: "0.0.0.0:9001"
+      RUSTFS_CONSOLE_ENABLE: "true"
+    volumes:
+      - rustfs_data:/data
+    networks:
+      services-net:
+
 volumes:
   api-gateway-db:
   credit-service-db:
   loan-management-service-db:
   kafka_data:
+  rustfs_data:
 
 networks:
   services-net:
