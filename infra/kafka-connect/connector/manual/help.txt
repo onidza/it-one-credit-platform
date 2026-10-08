@@ -7,6 +7,10 @@ curl.exe -X POST http://localhost:8083/connectors `
 Invoke-RestMethod http://localhost:8083/connectors/credit-service-connector/status |
     ConvertTo-Json -Depth 10
 
+docker exec debezium-connect `
+  curl -s `
+  http://localhost:8083/connectors/credit-service-connector/status
+
 --------------------------------
 update config->
 

@@ -47,6 +47,8 @@ services:
       REST_LOAN_SERVICE_URL: ${LOAN_MANAGEMENT_SERVICE_URL:-http://loan-management-service:8082}
 
       S3_ENDPOINT: http://rustfs:9000
+
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     depends_on:
       credit-service-db:
         condition: service_healthy
@@ -72,6 +74,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:postgresql://loan-management-service-db:5432/${LOAN_MANAGEMENT_SERVICE_DB_NAME:-postgres}
       SPRING_DATASOURCE_USERNAME: ${LOAN_MANAGEMENT_SERVICE_DB_USER:-postgres}
       SPRING_DATASOURCE_PASSWORD: ${LOAN_MANAGEMENT_SERVICE_DB_PASSWORD:-postgres}
+
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: kafka:9092
     depends_on:
       loan-management-service-db:
         condition: service_healthy
