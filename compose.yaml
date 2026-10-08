@@ -200,17 +200,50 @@ services:
 
       CONNECT_KEY_CONVERTER_SCHEMAS_ENABLE: "false"
       CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE: "false"
-    ports:
-      - "8083:8083"
     networks:
       - services-net
       - credit-service-db-net
+
+  debezium-init:
+    image: alpine:3.20
+    container_name: debezium-init
+    depends_on:
+      debezium-connect:
+        condition: service_started
+      credit-service-db:
+        condition: service_healthy
+    environment:
+      DB_USER: ${CREDIT_SERVICE_DB_USER:-postgres}
+      DB_PASSWORD: ${CREDIT_SERVICE_DB_PASSWORD:-postgres}
+      DB_NAME: ${CREDIT_SERVICE_DB_NAME:-postgres}
+    volumes:
+      - ./infra/kafka-connect/connector/credit-service-connector.json.tpl:/config/connector.json.tpl:ro
+
+    entrypoint: [ "/bin/sh", "-ec" ]
+    command:
+      - |
+        apk add --no-cache curl gettext
+
+        until curl -fsS http://debezium-connect:8083/connectors > /dev/null; do
+          echo "Waiting for Kafka Connect..."
+          sleep 2
+        done
+
+        envsubst < /config/connector.json.tpl > /tmp/connector.json
+
+        curl -fsS -X PUT \
+          http://debezium-connect:8083/connectors/credit-service-connector/config \
+          -H "Content-Type: application/json" \
+          --data-binary @/tmp/connector.json
+    networks:
+      - services-net
+    restart: "no"
 
   rustfs:
     image: rustfs/rustfs:1.0.0
     container_name: rustfs
     ports:
-      - "9001:9001"
+      - "9001:9001" #for manual local upload
     environment:
       RUSTFS_ACCESS_KEY: admin
       RUSTFS_SECRET_KEY: password123
